@@ -80,7 +80,7 @@ const CALIB_GRID = [
   { x: 0.1, y: 0.5 }, { x: 0.5, y: 0.5 }, { x: 0.9, y: 0.5 },
   { x: 0.1, y: 0.9 }, { x: 0.5, y: 0.9 }, { x: 0.9, y: 0.9 },
 ];
-const HOLD_MS = 600;
+const HOLD_MS = 300;
 const POLL_MS = 33;
 
 function runWebcamCalibration(source: MediaPipeGazeSource): Promise<CalibrationSample[]> {

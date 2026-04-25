@@ -100,25 +100,32 @@ export class MediaPipeGazeSource implements GazeSource {
         const rCY = (lm[R_TOP].y   + lm[R_BOT].y)   / 2;
         const lW  = Math.abs(lm[L_OUTER].x - lm[L_INNER].x);
         const rW  = Math.abs(lm[R_OUTER].x - lm[R_INNER].x);
+        const lH  = Math.abs(lm[L_TOP].y   - lm[L_BOT].y);
+        const rH  = Math.abs(lm[R_TOP].y   - lm[R_BOT].y);
 
         if (lW < MIN_EYE_W || rW < MIN_EYE_W) {
           this.rafId = requestAnimationFrame(() => this.loop());
           return;
         }
 
+        // ── Eye openness → confidence ───────────────────────────────────────
+        // Aspect ratio (height/width) is ~0.25–0.35 for a fully open eye.
+        // It drops toward 0 during blinks and squinting.
+        // We map it to a [0, 0.9] confidence so the GazeEngine's filter drops
+        // blink frames before they corrupt the dwell timer.
+        const aspect = ((lH / lW) + (rH / rW)) / 2;
+        const confidence = Math.min(aspect / 0.25, 1.0) * 0.9;
+
         // ── Normalised iris offset ──────────────────────────────────────────
-        // This is the actual gaze signal. Moving the iris right/left within the
-        // eye socket is what changes when you look at different screen positions.
-        // Dividing by eye width makes it independent of face distance and size.
+        // Average of both eyes, each normalised by that eye's own width.
+        // This is the actual gaze signal — head translation and size cancel out.
         const rawX = ((lm[L_IRIS].x - lCX) / lW + (lm[R_IRIS].x - rCX) / rW) / 2;
         const rawY = ((lm[L_IRIS].y - lCY) / lW + (lm[R_IRIS].y - rCY) / rW) / 2;
 
         this.lastRaw = { x: rawX, y: rawY };
 
         if (this.cb) {
-          // Emit the raw offset — the GazeEngine applies CalibrationProfile
-          // (scale + offset) to map these values to screen coordinates.
-          this.cb({ x: rawX, y: rawY, confidence: 0.85, timestamp: Date.now() });
+          this.cb({ x: rawX, y: rawY, confidence, timestamp: Date.now() });
         }
       }
     } catch {
