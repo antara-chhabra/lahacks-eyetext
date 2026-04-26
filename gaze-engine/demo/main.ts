@@ -584,49 +584,47 @@ function handleSelect(id: string, engine: GazeEngine) {
 
 // ── Session summary ───────────────────────────────────────────────────────────
 
+function section(title: string, body: string): string {
+  if (!body.trim()) return '';
+  return `<div class="summary-section"><h3>${title}</h3>${body}</div>`;
+}
+
 function renderSummary(s: SessionSummary): string {
   const moments = Array.isArray(s.keyMoments) && s.keyMoments.length > 0
     ? `<ul>${s.keyMoments.map(m => `<li>${m}</li>`).join('')}</ul>`
-    : '<p><em>None noted.</em></p>';
+    : '';
 
-  return `
-    <div class="summary-section">
-      <h3>Emotional Arc</h3>
-      <p>${s.emotionalArc}</p>
-    </div>
-    <div class="summary-section">
-      <h3>Body Language</h3>
-      <p>${s.bodyLanguage}</p>
-    </div>
-    <div class="summary-section">
-      <h3>Communication Quality</h3>
-      <p>${s.communicationQuality}</p>
-    </div>
-    <div class="summary-section">
-      <h3>Key Moments</h3>
-      ${moments}
-    </div>
-    <div class="summary-section">
-      <h3>Clinical Notes</h3>
-      <p>${s.clinicalNotes}</p>
-    </div>`;
+  return [
+    section('Emotional Arc',         s.emotionalArc        ? `<p>${s.emotionalArc}</p>`        : ''),
+    section('Body Language',          s.bodyLanguage         ? `<p>${s.bodyLanguage}</p>`         : ''),
+    section('Communication Quality',  s.communicationQuality ? `<p>${s.communicationQuality}</p>` : ''),
+    section('Key Moments',            moments),
+    section('Clinical Notes',         s.clinicalNotes        ? `<p>${s.clinicalNotes}</p>`        : ''),
+  ].join('');
 }
 
 function localFallbackSummary(state: ModeState): SessionSummary {
   const wordSelections = state.events
     .filter(e => e.type === 'word_select')
     .map(e => e.value);
+  const totalWords = wordSelections.length;
+  const sends = state.events.filter(e => e.type === 'send').length;
   const allMessages = state.messages.length > 0
     ? state.messages
-    : wordSelections.length > 0 ? [wordSelections.join(' ')] : ['(no messages)'];
-  const totalWords = state.events.filter(e => e.type === 'word_select').length;
-  const sends = state.events.filter(e => e.type === 'send').length;
+    : wordSelections.length > 0 ? [wordSelections.join(' ')] : [];
+
+  const wordStr  = totalWords === 1 ? '1 word' : `${totalWords} words`;
+  const sendStr  = sends === 1     ? '1 message sent' : sends > 1 ? `${sends} messages sent` : 'no full messages sent';
+  const qualNote = totalWords > 0
+    ? `Patient selected ${wordStr} and ${sendStr} during this session.`
+    : '';
+
   return {
-    emotionalArc: 'Unable to determine — backend unavailable.',
-    bodyLanguage: 'Unable to determine — backend unavailable.',
-    communicationQuality: `Patient selected ${totalWords} word tile(s) and sent ${sends} message(s).`,
-    keyMoments: allMessages.slice(0, 4).map((m, i) => `Message ${i + 1}: "${m}"`),
-    clinicalNotes: 'Backend analysis unavailable. Review session events manually.',
+    emotionalArc:        '',   // requires video — omit in local fallback
+    bodyLanguage:        '',   // requires video — omit in local fallback
+    communicationQuality: qualNote,
+    keyMoments: allMessages.slice(0, 4),
+    clinicalNotes:       '',   // omit in local fallback
     generatedAt: Date.now(),
   };
 }

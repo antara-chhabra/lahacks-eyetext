@@ -720,12 +720,24 @@ body[data-screen="screen-board"] #gaze-debug { display: block; }
 .summary-section:first-child { border-top: none; padding-top: 0; }
 
 .summary-section h3 {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--peach);
+  color: var(--text-muted);
   margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.summary-section h3::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 12px;
+  background: var(--peach);
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 
 .summary-section p { font-size: 0.95rem; color: var(--text); line-height: 1.7; }
