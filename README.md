@@ -1,8 +1,8 @@
-# EyeText — Eye-Driven AAC for ALS & Motor Decline
+# EyeText — Your eyes are the new keyboard.
 
 > **LAHacks 2026**
 
-EyeText is a browser-based Augmentative and Alternative Communication (AAC) system built for patients with ALS, stroke, or other motor decline. Using only a standard webcam and their eyes, patients can select word tiles, build sentences, and have an AI agent speak and respond on their behalf — no special hardware required.
+EyeText is a browser-based Augmentative and Alternative Communication (AAC) system built for patients with ALS, stroke, or other motor decline. Using only a standard webcam and their eyes, patients can select word tiles, build sentences, and have an AI agent speak and respond on their behalf - no special hardware required.
 
 ---
 
@@ -282,3 +282,8 @@ lahacks-eyetext/
 - **Per-target dwell time**: Help tiles use 2500 ms vs 1500 ms for word tiles. Larger hit areas warrant longer confirmation to prevent accidental triggers.
 - **Local summary fallback**: The session summary modal renders a local activity report instantly on click (word count, messages sent, key moments), then updates in-place with the AI-generated clinical analysis once Gemini responds.
 - **MongoDB vector search**: Phrase predictions use Atlas Search semantic similarity rather than word frequency, so next-word suggestions adapt to each patient's actual vocabulary over time.
+
+---
+
+## Built by
+Antara, Sujal, Sachin, Harshini at LAHacks 2026
