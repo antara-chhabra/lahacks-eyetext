@@ -1,6 +1,22 @@
 import { GazeEngine, buildCalibrationProfile } from '@catalyst/gaze-engine';
 import type { GazeSource, GazeCallback, CalibrationSample, CalibrationProfile } from '@catalyst/gaze-engine';
 import { MediaPipeGazeSource } from './mediapipe-source';
+import { SessionRecorder } from '../../claudinary-video/src/recorder';
+import { uploadToCloudinary } from '../../claudinary-video/src/uploader';
+import type { SessionEvent, SessionData, SessionSummary } from '../../claudinary-video/src/types';
+
+// ── Session state ─────────────────────────────────────────────────────────────
+
+const recorder = new SessionRecorder();
+const sessionEvents: SessionEvent[] = [];
+const sessionMessages: string[] = [];
+const SESSION_ID = `sess-${Date.now()}`;
+const USER_ID = 'demo-1';
+
+const CLOUDINARY_CLOUD = 'dsddkg2x6';
+const CLOUDINARY_PRESET = 'Lahacks';
+const BACKEND_URL = 'http://localhost:3001';
+const AGENT_URL = 'http://localhost:8000';
 
 // ── Next-word transition table ────────────────────────────────────────────────
 // Key = last 1–2 words of composed text (uppercase). Value = 4 suggestions.
@@ -207,6 +223,26 @@ function makeTileHTML(label: string): string {
     </svg>`;
 }
 
+function setWordTileLabels(words: string[], engine: GazeEngine) {
+  for (let i = 0; i < WORD_TILE_IDS.length; i++) {
+    const el = document.getElementById(WORD_TILE_IDS[i])!;
+    const label = words[i] ?? '';
+    el.dataset.word = label;
+    const wordEl = el.querySelector('.tile-word') as HTMLElement;
+    if (wordEl) wordEl.textContent = label;
+    el.classList.toggle('empty', !label);
+  }
+  // Re-register targets so dwell detection picks up any rect changes
+  requestAnimationFrame(() => {
+    for (const id of WORD_TILE_IDS) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      engine.registerTarget({ id, rect: { x: r.left-10, y: r.top-10, width: r.width+20, height: r.height+20 }, label: id });
+    }
+  });
+}
+
 function buildBoard(engine: GazeEngine) {
   const grid = document.getElementById('word-grid')!;
   grid.innerHTML = '';
@@ -244,24 +280,34 @@ function buildBoard(engine: GazeEngine) {
   });
 }
 
-function refreshWordTiles(engine: GazeEngine) {
-  const words = getNextWords(composedText);
-  for (let i = 0; i < WORD_TILE_IDS.length; i++) {
-    const el = document.getElementById(WORD_TILE_IDS[i])!;
-    const label = words[i] ?? '';
-    el.dataset.word = label;
-    const wordEl = el.querySelector('.tile-word') as HTMLElement;
-    if (wordEl) wordEl.textContent = label;
-    el.classList.toggle('empty', !label);
+// Optimistic update: show TRANSITIONS immediately, then replace with live /predict result
+async function refreshWordTiles(engine: GazeEngine) {
+  const fallback = getNextWords(composedText);
+  setWordTileLabels(fallback, engine);
+
+  try {
+    const res = await fetch(`${AGENT_URL}/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ context: composedText.trim() || '' }),
+    });
+    if (res.ok) {
+      const { words } = await res.json();
+      if (Array.isArray(words) && words.length === 4) {
+        setWordTileLabels(words, engine);
+      }
+    }
+  } catch {
+    // keep the fallback already shown
   }
 }
 
 function handleSelect(id: string, engine: GazeEngine) {
   if (id === CTRL_UNDO) {
-    // Remove last word from composed text
     const trimmed = composedText.trimEnd();
     const lastSpace = trimmed.lastIndexOf(' ');
     composedText = lastSpace === -1 ? '' : trimmed.slice(0, lastSpace) + ' ';
+    sessionEvents.push({ timestamp: Date.now(), type: 'undo', value: '' });
     updateDisplay();
     refreshWordTiles(engine);
     return;
@@ -271,10 +317,18 @@ function handleSelect(id: string, engine: GazeEngine) {
     const text = composedText.trim();
     if (!text) return;
     speak(text);
-    fetch('/phrases/speak', {
+    sessionMessages.push(text);
+    sessionEvents.push({ timestamp: Date.now(), type: 'send', value: text });
+    fetch(`${AGENT_URL}/intent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({
+        points: [],
+        dwell_target_id: text,
+        dwell_duration_ms: 1300,
+        session_id: SESSION_ID,
+        user_id: USER_ID,
+      }),
     }).catch(() => {});
     composedText = '';
     updateDisplay();
@@ -285,9 +339,40 @@ function handleSelect(id: string, engine: GazeEngine) {
   const el = document.getElementById(id) as HTMLElement | null;
   const word = el?.dataset.word;
   if (!word) return;
+  sessionEvents.push({ timestamp: Date.now(), type: 'word_select', value: word });
   composedText = (composedText.trimEnd() + ' ' + word + ' ').trimStart();
   updateDisplay();
   refreshWordTiles(engine);
+}
+
+// ── Session summary ───────────────────────────────────────────────────────────
+
+function renderSummary(s: SessionSummary): string {
+  const moments = Array.isArray(s.keyMoments) && s.keyMoments.length > 0
+    ? `<ul>${s.keyMoments.map(m => `<li>${m}</li>`).join('')}</ul>`
+    : '<p><em>None noted.</em></p>';
+
+  return `
+    <div class="summary-section">
+      <h3>Emotional Arc</h3>
+      <p>${s.emotionalArc}</p>
+    </div>
+    <div class="summary-section">
+      <h3>Body Language</h3>
+      <p>${s.bodyLanguage}</p>
+    </div>
+    <div class="summary-section">
+      <h3>Communication Quality</h3>
+      <p>${s.communicationQuality}</p>
+    </div>
+    <div class="summary-section">
+      <h3>Key Moments</h3>
+      ${moments}
+    </div>
+    <div class="summary-section">
+      <h3>Clinical Notes</h3>
+      <p>${s.clinicalNotes}</p>
+    </div>`;
 }
 
 // ── Board launcher ────────────────────────────────────────────────────────────
@@ -312,7 +397,7 @@ async function startBoard(source: GazeSource, calibration?: CalibrationProfile):
   engine.onDwellProgress((id, progress) => {
     const el = document.getElementById(id);
     if (!el) return;
-    if (el.dataset.word === '' && WORD_TILE_IDS.includes(id)) return; // skip empty prediction tiles
+    if (el.dataset.word === '' && WORD_TILE_IDS.includes(id)) return;
     const fill = el.querySelector('.ring-fill') as SVGCircleElement | null;
     if (fill) fill.style.strokeDashoffset = String(CIRC * (1 - progress));
     el.classList.toggle('dwelling', progress > 0);
@@ -350,7 +435,7 @@ async function startBoard(source: GazeSource, calibration?: CalibrationProfile):
 let mpSource: MediaPipeGazeSource | null = null;
 
 function wireButtons(engine: GazeEngine, calibration: CalibrationProfile | undefined) {
-  ['btn-back', 'btn-recalibrate'].forEach(btnId => {
+  ['btn-back', 'btn-recalibrate', 'btn-bye'].forEach(btnId => {
     const old = document.getElementById(btnId)!;
     const fresh = old.cloneNode(true) as HTMLElement;
     old.parentNode!.replaceChild(fresh, old);
@@ -376,9 +461,63 @@ function wireButtons(engine: GazeEngine, calibration: CalibrationProfile | undef
     const newEngine = await startBoard(mpSource, newCal);
     wireButtons(newEngine, newCal);
   });
+
+  document.getElementById('btn-bye')!.addEventListener('click', async () => {
+    engine.stop();
+    document.getElementById('gaze-cursor')!.style.display = 'none';
+
+    const modal = document.getElementById('summary-modal')!;
+    const loadingEl = document.getElementById('summary-loading')!;
+    const contentEl = document.getElementById('summary-content')!;
+    modal.classList.remove('hidden');
+    loadingEl.classList.remove('hidden');
+    contentEl.innerHTML = '';
+
+    try {
+      const blob = await recorder.stop();
+      const { publicId, secureUrl } = await uploadToCloudinary(blob, CLOUDINARY_CLOUD, CLOUDINARY_PRESET);
+
+      const payload: SessionData = {
+        userId: USER_ID,
+        sessionId: SESSION_ID,
+        videoUrl: secureUrl,
+        videoPublicId: publicId,
+        duration: Math.round((Date.now() - recorder.startTime) / 1000),
+        events: sessionEvents,
+        messagesSent: sessionMessages,
+      };
+
+      const res = await fetch(`${BACKEND_URL}/session/end`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+      const summary: SessionSummary = await res.json();
+
+      loadingEl.classList.add('hidden');
+      contentEl.innerHTML = renderSummary(summary);
+    } catch (err) {
+      loadingEl.classList.add('hidden');
+      contentEl.innerHTML = `<p class="summary-error">Could not generate summary: ${String(err)}</p>`;
+    }
+  });
+
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
+
+// Close summary → always back to landing. Set up once — not inside wireButtons.
+document.getElementById('btn-close-summary')!.addEventListener('click', () => {
+  document.getElementById('summary-modal')!.classList.add('hidden');
+  mpSource?.shutdown();
+  mpSource = null;
+  const btn = document.getElementById('btn-webcam') as HTMLButtonElement;
+  btn.textContent = '📷 Start with Webcam →';
+  btn.disabled = false;
+  showScreen('screen-landing');
+});
 
 document.getElementById('btn-webcam')!.addEventListener('click', async () => {
   const btn = document.getElementById('btn-webcam') as HTMLButtonElement;
@@ -394,6 +533,11 @@ document.getElementById('btn-webcam')!.addEventListener('click', async () => {
     mpSource = new MediaPipeGazeSource();
     showScreen('screen-calibration');
     await mpSource.init(statusEl);
+
+    // Start recording as soon as camera is ready
+    if (mpSource.stream) {
+      recorder.start(mpSource.stream);
+    }
 
     const samples = await runWebcamCalibration(mpSource);
     const calibration = samples.length >= 2 ? buildCalibrationProfile(samples) : undefined;

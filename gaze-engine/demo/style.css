@@ -308,6 +308,124 @@ html, body {
   box-shadow: 0 0 10px rgba(255,255,255,0.25);
 }
 
+/* ── Bye / End Session button ────────────────────────────────────────────── */
+
+.bye-btn {
+  background: rgba(192, 57, 43, 0.15);
+  border-color: rgba(192, 57, 43, 0.5);
+  color: #e74c3c;
+  font-weight: 600;
+  margin-top: 0;
+  flex-shrink: 0;
+}
+.bye-btn:hover {
+  background: rgba(192, 57, 43, 0.3);
+  border-color: #e74c3c;
+  color: #ff6b6b;
+}
+
+/* ── Session summary modal ───────────────────────────────────────────────── */
+
+.hidden { display: none !important; }
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+}
+
+.modal-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+  max-width: 620px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-card h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+}
+
+.summary-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  padding: 20px 0;
+}
+
+.summary-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.summary-section {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.summary-section:first-child { border-top: none; padding-top: 0; }
+
+.summary-section h3 {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.summary-section p {
+  font-size: 0.92rem;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.summary-section ul {
+  list-style: disc;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-section li {
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.summary-error {
+  color: #f87171;
+  font-size: 0.88rem;
+  text-align: center;
+  padding: 16px 0;
+}
+
 /* ── MediaPipe video PiP ─────────────────────────────────────────────────── */
 
 #webgazerVideoFeed {

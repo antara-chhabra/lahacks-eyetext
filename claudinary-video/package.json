@@ -1,0 +1,6 @@
+{
+  "name": "claudinary-video",
+  "version": "1.0.0",
+  "description": "Session recording, Cloudinary video upload, and Claude AI analysis for Catalyst for Care",
+  "type": "module"
+}

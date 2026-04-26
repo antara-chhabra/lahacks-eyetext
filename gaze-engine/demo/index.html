@@ -44,6 +44,7 @@
         </div>
         <button class="ghost-btn" id="btn-recalibrate">Recalibrate</button>
         <div id="mode-badge">👁 Webcam</div>
+        <button class="ghost-btn bye-btn" id="btn-bye">👋 End Session</button>
       </header>
 
       <!-- 4 word tiles + 2 controls in a 2×3 grid -->
@@ -55,6 +56,20 @@
   </div>
 
   <div id="gaze-cursor"></div>
+
+  <!-- Session summary modal — shown after End Session -->
+  <div id="summary-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h2>Session Summary</h2>
+      <div id="summary-loading" class="summary-loading hidden">
+        <div class="summary-spinner"></div>
+        <p>Analyzing session… this may take a moment.</p>
+      </div>
+      <div id="summary-content"></div>
+      <button class="ghost-btn" id="btn-close-summary" style="margin-top: 20px; align-self: center;">Close</button>
+    </div>
+  </div>
+
   <script type="module" src="./main.ts"></script>
 </body>
 </html>

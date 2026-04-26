@@ -25,9 +25,11 @@ const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/face_landmark
 export class MediaPipeGazeSource implements GazeSource {
   private landmarker: FaceLandmarker | null = null;
   private video: HTMLVideoElement | null = null;
-  private stream: MediaStream | null = null;
+  private _stream: MediaStream | null = null;
   private rafId: number | null = null;
   private cb: GazeCallback | null = null;
+
+  get stream(): MediaStream | null { return this._stream; }
 
   /**
    * Last computed raw gaze vector: iris offset from eye center, normalised by
@@ -54,13 +56,13 @@ export class MediaPipeGazeSource implements GazeSource {
     });
 
     status('Opening camera…');
-    this.stream = await navigator.mediaDevices.getUserMedia({
+    this._stream = await navigator.mediaDevices.getUserMedia({
       video: { width: 640, height: 480, facingMode: 'user' },
     });
 
     this.video = document.createElement('video');
     this.video.id = 'webgazerVideoFeed'; // picks up the PiP CSS
-    this.video.srcObject = this.stream;
+    this.video.srcObject = this._stream;
     this.video.muted = true;
     this.video.playsInline = true;
     document.body.appendChild(this.video);
@@ -78,7 +80,7 @@ export class MediaPipeGazeSource implements GazeSource {
   shutdown(): void {
     if (this.rafId !== null) { cancelAnimationFrame(this.rafId); this.rafId = null; }
     this.cb = null;
-    this.stream?.getTracks().forEach(t => t.stop());
+    this._stream?.getTracks().forEach(t => t.stop());
     this.video?.remove();
     this.video = null;
     this.landmarker?.close();
