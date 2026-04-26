@@ -1,0 +1,11 @@
+# Already installed in fetch-ai-project/venv — no action needed:
+# uagents==0.24.2
+# uagents-core==0.4.4
+# openai==2.32.0
+# pydantic==2.8.2
+# uvicorn==0.30.6
+# httpx==0.28.1
+
+# Still need to install (run: pip install fastapi python-dotenv):
+fastapi>=0.110.0
+python-dotenv>=1.0.0

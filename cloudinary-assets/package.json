@@ -1,0 +1,16 @@
+{
+  "name": "cloudinary-assets",
+  "version": "1.0.0",
+  "description": "Cloudinary icon upload, theme presets, and tile manifest for Catalyst for Care",
+  "private": true,
+  "scripts": {
+    "upload": "node src/upload.js",
+    "manifest": "node src/manifest-builder.js",
+    "verify": "node tests/verify-urls.js"
+  },
+  "dependencies": {
+    "cloudinary": "^1.41.3",
+    "dotenv": "^16.4.5",
+    "node-fetch": "^2.7.0"
+  }
+}
